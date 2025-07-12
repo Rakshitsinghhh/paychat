@@ -20,6 +20,7 @@ wss.on("connection", (ws) => {
     ws.on("message", (msg) => __awaiter(void 0, void 0, void 0, function* () {
         const fmsg = msg.toString();
         const data = JSON.parse(fmsg);
+        // ✅ Register user
         if (data.type === "register") {
             socketMap.set(data.userId, ws);
             socketToUser.set(ws, data.userId);
@@ -27,8 +28,8 @@ wss.on("connection", (ws) => {
             try {
                 yield prisma.user.create({
                     data: {
-                        name
-                    }
+                        name,
+                    },
                 });
                 console.log("user inserted");
             }
@@ -36,29 +37,30 @@ wss.on("connection", (ws) => {
                 console.error("Error inserting user:", err);
             }
         }
+        // ✅ Handle private messages
         if (data.type === "private") {
             const to = data.to;
             const content = data.content;
-            const peer = socketMap.get(to);
-            const senderId = socketToUser.get(ws);
-            peer === null || peer === void 0 ? void 0 : peer.send(content.toString());
+            const senderId = socketToUser.get(ws); // 👈 Get sender first
             if (!senderId) {
                 console.error("senderId is undefined. Connection might not be registered.");
                 return;
             }
+            const peer = socketMap.get(to);
+            peer === null || peer === void 0 ? void 0 : peer.send(content.toString());
             try {
                 yield prisma.message.create({
                     data: {
                         senderId,
                         recieverId: to,
-                        content
-                    }
+                        content,
+                    },
                 }).then(() => {
-                    console.log("message sended to db");
+                    console.log("message sent to DB");
                 });
             }
             catch (err) {
-                console.log(err);
+                console.error("Error saving message:", err);
             }
         }
     }));

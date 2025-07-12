@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     type: "register",
     userId : name
   })
+
   const resp = ws.send(payload)  
 
   return NextResponse.json({
