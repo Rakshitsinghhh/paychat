@@ -20,3 +20,10 @@ model User {
   createdAt DateTime @default(now())
 }
 
+model message{
+  id        Int      @id @default(autoincrement())
+  senderId  String
+  recieverId String
+  content String
+  sentAt DateTime @default(now())
+}
