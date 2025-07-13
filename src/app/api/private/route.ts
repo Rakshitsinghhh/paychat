@@ -1,4 +1,3 @@
-import { Content } from "next/font/google";
 import { NextRequest, NextResponse } from "next/server";
 
 const ws = new WebSocket("ws://localhost:8080")
