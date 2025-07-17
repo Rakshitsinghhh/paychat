@@ -1,30 +1,55 @@
 "use client"
-import axios from "axios"
-import { useRef } from "react"
 
-export default function Private(){
+import { useEffect, useRef } from "react"
+import { getSocket } from "../lib/ws"
+
+export default function Private() {
     const rref = useRef<HTMLInputElement>(null)
     const mref = useRef<HTMLInputElement>(null)
+    const ws = useRef<WebSocket | null>(null);
 
-    async function handleprivate(){
 
-        try{
-            axios.post("http://localhost:3000/api/private",{
-                reviever : rref.current?.value,
-                message : mref.current?.value
-        }).then(()=>{
-            console.log("private message sended")
-        })
-    }
-    catch(err){
-        console.log(err)
+    useEffect(() => {
+        const socket = getSocket();
+
+        socket.onopen = () => {
+            console.log("✅ WS connection established");
+            ws.current = socket;
+
+            // Set message handler
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === "private") {
+                    console.log("📩 Received private message:", data);
+                }
+            };
+        }, []});
+
+
+    async function handleprivate() {
+        const to = rref.current?.value;
+        const token = localStorage.getItem("jwt")
+        if (!to) return;
+
+        if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(
+                JSON.stringify({
+                    type: "private", // ✅ Fix: must match server
+                    to,
+                    jwt: token,
+                    content: mref.current?.value,
+                })
+            );
+            console.log("📤 Sent message to WS server");
+        } else {
+            console.error("❌ WebSocket not connected yet.");
         }
     }
 
-    return(
+    return (
         <div>
-            <input placeholder="message" ref={rref}/>
-            <input placeholder="name" ref={mref}/>
+            <input placeholder="message" ref={mref} />
+            <input placeholder="name" ref={rref} />
 
             <button onClick={handleprivate}>
                 submit

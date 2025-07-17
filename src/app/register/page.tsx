@@ -1,15 +1,25 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getSocket } from "../lib/ws";
+import Private from "../private/page";
 
 export default function Register() {
   const nref = useRef<HTMLInputElement>(null);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    // 1. Create WebSocket connection once
-    const socket = new WebSocket("ws://localhost:8080");
-    ws.current = socket;
+        const socket = getSocket();
+        ws.current = socket;
+    
+        // 2. Handle incoming messages
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+    
+          if (data.type === "private") {
+          }
+
+        };
 
     // 2. Handle incoming messages
     socket.onmessage = (event) => {
@@ -19,8 +29,6 @@ export default function Register() {
         localStorage.setItem("jwt", data.jwt);
         console.log("✅ JWT token saved to localStorage:", data.jwt);
       }
-
-  
     };
 
     return () => {
@@ -50,6 +58,7 @@ export default function Register() {
     <div>
       <input type="text" placeholder="enter your name" ref={nref} />
       <button onClick={handleRegister}>continue</button>
+      <Private/>
     </div>
   );
 }
