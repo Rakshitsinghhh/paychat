@@ -12,7 +12,6 @@ export default function Register() {
         const socket = getSocket();
         ws.current = socket;
     
-        // 2. Handle incoming messages
         socket.onmessage = (event) => {
           const data = JSON.parse(event.data);
     
@@ -21,7 +20,6 @@ export default function Register() {
 
         };
 
-    // 2. Handle incoming messages
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
@@ -40,7 +38,6 @@ export default function Register() {
     const username = nref.current?.value;
     if (!username) return;
 
-    // 4. Send "register" message via WebSocket
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(
         JSON.stringify({
