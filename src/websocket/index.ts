@@ -36,27 +36,55 @@ wss.on("connection", (ws) => {
     if (data.type === "private") {
       const to = data.to;
       const content = data.content;
+      const token = data.jwt;
 
-      const senderId = socketToUser.get(ws);
-      if (!senderId) {
-        console.error("senderId is undefined. Connection might not be registered.");
+      let decoded;
+      try {
+        decoded = jwt.verify(token, "shhh");
+      } catch (err) {
+        console.error("Invalid JWT:", err);
         return;
       }
 
-      const peer = socketMap.get(to);
-      peer?.send(content.toString());
+      if (typeof decoded === "string" || !("name" in decoded)) {
+        console.error("Invalid token payload");
+        return;
+      }
 
-      try {
-        await prisma.message.create({
-          data: {
-            senderId,
-            recieverId : to,
-            content,
-          },
-        });
-        console.log("message saved to DB");
-      } catch (err) {
-        console.error("Error saving message:", err);
+      const auth = await prisma.user.findUnique({
+        where: {
+          name: decoded.name,
+        },
+      });
+
+      if (auth) {
+        const senderId = socketToUser.get(ws);
+
+        if (!senderId) {
+          console.error("senderId is undefined. Connection might not be registered.");
+          return;
+        }
+
+        const peer = socketMap.get(to);
+
+        if (!peer) {
+          console.warn(`No active socket found for receiver ID: ${to}`);
+        } else {
+          peer.send(content.toString());
+        }
+
+        try {
+          await prisma.message.create({
+            data: {
+              senderId,
+              recieverId: to,
+              content: content.toString(),
+            },
+          });
+          console.log("Message saved to DB");
+        } catch (err) {
+          console.error("Error saving message:", err || err);
+        }
       }
     }
   });

@@ -42,25 +42,50 @@ wss.on("connection", (ws) => {
         if (data.type === "private") {
             const to = data.to;
             const content = data.content;
-            const senderId = socketToUser.get(ws);
-            if (!senderId) {
-                console.error("senderId is undefined. Connection might not be registered.");
-                return;
-            }
-            const peer = socketMap.get(to);
-            peer === null || peer === void 0 ? void 0 : peer.send(content.toString());
+            const token = data.jwt;
+            let decoded;
             try {
-                yield prisma.message.create({
-                    data: {
-                        senderId,
-                        recieverId: to,
-                        content,
-                    },
-                });
-                console.log("message saved to DB");
+                decoded = jsonwebtoken_1.default.verify(token, "shhh");
             }
             catch (err) {
-                console.error("Error saving message:", err);
+                console.error("Invalid JWT:", err);
+                return;
+            }
+            if (typeof decoded === "string" || !("name" in decoded)) {
+                console.error("Invalid token payload");
+                return;
+            }
+            const auth = yield prisma.user.findUnique({
+                where: {
+                    name: decoded.name,
+                },
+            });
+            if (auth) {
+                const senderId = socketToUser.get(ws);
+                if (!senderId) {
+                    console.error("senderId is undefined. Connection might not be registered.");
+                    return;
+                }
+                const peer = socketMap.get(to);
+                if (!peer) {
+                    console.warn(`No active socket found for receiver ID: ${to}`);
+                }
+                else {
+                    peer.send(content.toString());
+                }
+                try {
+                    yield prisma.message.create({
+                        data: {
+                            senderId,
+                            recieverId: to,
+                            content: content.toString(),
+                        },
+                    });
+                    console.log("Message saved to DB");
+                }
+                catch (err) {
+                    console.error("Error saving message:", err || err);
+                }
             }
         }
     }));
