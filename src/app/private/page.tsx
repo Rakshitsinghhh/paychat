@@ -29,12 +29,13 @@ export default function Private() {
     async function handleprivate() {
         const to = rref.current?.value;
         const token = localStorage.getItem("jwt")
+        console.log(token)
         if (!to) return;
 
         if (ws.current?.readyState === WebSocket.OPEN) {
             ws.current.send(
                 JSON.stringify({
-                    type: "private", // ✅ Fix: must match server
+                    type: "private",
                     to,
                     jwt: token,
                     content: mref.current?.value,
