@@ -51,6 +51,20 @@ wss.on("connection", (ws) => {
             console.error("❌ Invalid JSON:", err);
             return;
         }
+        /*get messages*/
+        if (data.type == "getmsg") {
+            const decoded = jsonwebtoken_1.default.verify(data.jwt, "shhh");
+            const sender = decoded.name;
+            const messages = yield prisma.message.findMany({
+                where: {
+                    senderId: sender,
+                }
+            });
+            ws.send(JSON.stringify({
+                type: "allmsg",
+                messages: messages,
+            }));
+        }
         /* ───────────── 1️⃣ REGISTER ───────────── */
         if (data.type === "register") {
             console.log("🔧 Registering user:", data.userId);

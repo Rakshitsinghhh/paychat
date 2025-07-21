@@ -42,6 +42,20 @@ wss.on("connection", (ws) => {
       console.error("❌ Invalid JSON:", err);
       return;
     }
+    /*get messages*/
+    if(data.type=="getmsg"){
+      const decoded:any =jwt.verify(data.jwt,"shhh")
+      const sender = decoded.name
+      const messages = await prisma.message.findMany({
+        where:{
+          senderId: sender,
+        }
+      })
+      ws.send(JSON.stringify({
+          type: "allmsg",
+          messages: messages,
+        }));
+    }
 
     /* ───────────── 1️⃣ REGISTER ───────────── */
     if (data.type === "register") {

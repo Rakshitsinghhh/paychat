@@ -11,13 +11,17 @@ export default function RegisterLogin() {
   const mref = useRef<HTMLInputElement>(null);
   const ws = useRef<WebSocket | null>(null);
 
+  const token = localStorage.getItem("jwt")
+
   const [isConnected, setIsConnected] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [status, setStatus] = useState('Connecting...');
 
   useEffect(() => {
-    if (ws.current?.readyState === WebSocket.OPEN) return;
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
 
     const socket = getSocket();
     ws.current = socket;
@@ -25,6 +29,10 @@ export default function RegisterLogin() {
     socket.onopen = () => {
       setIsConnected(true);
       setStatus('Connected');
+      if(token!=null){
+          ws.current?.send(JSON.stringify({ type: "getmsg", jwt: token }));
+      }
+
     };
 
     socket.onclose = () => {
@@ -76,18 +84,18 @@ export default function RegisterLogin() {
     const username = nameRef.current?.value?.trim();
     if (!username || !isConnected || ws.current?.readyState !== WebSocket.OPEN) return;
 
-    ws.current.send(JSON.stringify({ type, userId: username }));
+    ws.current?.send(JSON.stringify({ type, userId: username }));
     setStatus(type === "register" ? "Registering..." : "Logging in...");
   };
 
   const sendPrivateMessage = () => {
     const to = rref.current?.value;
     const content = mref.current?.value;
-    const jwt = localStorage.getItem("jwt");
+    const jwt = token;
 
     if (!to || !content || !jwt || ws.current?.readyState !== WebSocket.OPEN) return;
 
-    ws.current.send(JSON.stringify({
+    ws.current?.send(JSON.stringify({
       type: "private",
       to,
       content,
