@@ -137,7 +137,7 @@ wss.on("connection", (ws) => {
 
         // Generate JWT token
         const jwtToken = jwt.sign({ name }, "shhh");
-        localStorage.setItem("jwt", jwtToken);
+        // localStorage.setItem("jwt", jwtToken);
         
         // Update socket mapping
         updateUserSocketMapping(name, ws);
