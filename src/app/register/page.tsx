@@ -17,6 +17,8 @@ export default function RegisterLogin() {
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [status, setStatus] = useState('Connecting...');
+  const [messages, setMessages] = useState([]);
+
 
   useEffect(() => {
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -29,10 +31,6 @@ export default function RegisterLogin() {
     socket.onopen = () => {
       setIsConnected(true);
       setStatus('Connected');
-      if(token!=null){
-          ws.current?.send(JSON.stringify({ type: "getmsg", jwt: token }));
-      }
-
     };
 
     socket.onclose = () => {
@@ -68,6 +66,11 @@ export default function RegisterLogin() {
           console.log("🔒 Private message:", data);
         }
 
+        if (data.type === "allmsg" && Array.isArray(data.messages)) {
+                // console.log("✅ Setting all messages", data.messages);
+                setMessages(data.messages);
+        }
+
         if (data.type === "error") {
           console.error("❌ Server error:", data.message);
           setStatus(`Error: ${data.message}`);
@@ -79,6 +82,20 @@ export default function RegisterLogin() {
 
     return () => socket.close();
   }, []);
+
+
+  useEffect(()=>{
+    if (ws.current?.readyState===WebSocket.OPEN && isLoggedIn || isRegistered && token){
+        ws.current?.send(JSON.stringify({ type: "getmsg", jwt: token }));
+    }
+
+  },[isLoggedIn,isRegistered,token])
+
+
+  useEffect(() => {
+    console.log("✅ Messages updated", messages);
+  }, [messages]);
+
 
   const sendMessage = (type: "register" | "login") => {
     const username = nameRef.current?.value?.trim();
@@ -101,6 +118,12 @@ export default function RegisterLogin() {
       content,
       jwt,
     }));
+
+    ws.current?.send(JSON.stringify({ 
+      type: "getmsg", 
+      jwt: token 
+    }));
+
   };
 
   return (
@@ -168,7 +191,10 @@ export default function RegisterLogin() {
             Send Private Message
           </button>
         </div>
+
+        
       )}
+
     </div>
   );
 }
