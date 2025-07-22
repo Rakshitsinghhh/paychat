@@ -2,30 +2,56 @@
 
 import { useEffect, useRef, useState } from "react";
 
+// Type definitions
+interface Message {
+  senderId: string;
+  recieverId: string;
+  content: string;
+  timestamp?: string;
+  createdAt?: string;
+}
+
+interface WebSocketMessage {
+  type: string;
+  jwt?: string;
+  from?: string;
+  to?: string;
+  content?: string;
+  timestamp?: string;
+  messages?: Message[];
+  message?: string;
+  userId?: string;
+}
+
+interface JWTPayload {
+  name: string;
+  [key: string]: any;
+}
+
 // Replace with your actual socket utility
-const getSocket = () => new WebSocket('ws://localhost:8080');
+const getSocket = (): WebSocket => new WebSocket('ws://localhost:8080');
 
-export default function RegisterLogin() {
-  const nameRef = useRef(null);
-  const rref = useRef(null);
-  const mref = useRef(null);
-  const ws = useRef(null);
-  const messagesEndRef = useRef(null);
+export default function RegisterLogin(): JSX.Element {
+  const nameRef = useRef<HTMLInputElement>(null);
+  const rref = useRef<HTMLInputElement>(null);
+  const mref = useRef<HTMLInputElement>(null);
+  const ws = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [token, setToken] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [status, setStatus] = useState('Connecting...');
-  const [msgData, setMsgData] = useState([]);
-  const [receivers, setReceivers] = useState([]);
-  const [currentUsername, setCurrentUsername] = useState(null);
-  const [selectedContact, setSelectedContact] = useState(null);
-  const [contactMessages, setContactMessages] = useState([]);
-  const currentUsernameRef = useRef(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isRegistered, setIsRegistered] = useState<boolean>(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [status, setStatus] = useState<string>('Connecting...');
+  const [msgData, setMsgData] = useState<Message[]>([]);
+  const [receivers, setReceivers] = useState<string[]>([]);
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const [selectedContact, setSelectedContact] = useState<string | null>(null);
+  const [contactMessages, setContactMessages] = useState<Message[]>([]);
+  const currentUsernameRef = useRef<string | null>(null);
 
   // Auto-scroll to bottom of messages
-  const scrollToBottom = () => {
+  const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -43,7 +69,7 @@ export default function RegisterLogin() {
     
     if (storedToken) {
       try {
-        const payload = JSON.parse(atob(storedToken.split('.')[1]));
+        const payload: JWTPayload = JSON.parse(atob(storedToken.split('.')[1]));
         const username = payload.name;
         setCurrentUsername(username);
         currentUsernameRef.current = username;
@@ -61,10 +87,10 @@ export default function RegisterLogin() {
       return;
     }
 
-    const socket = getSocket();
+    const socket: WebSocket = getSocket();
     ws.current = socket;
 
-    socket.onopen = () => {
+    socket.onopen = (): void => {
       setIsConnected(true);
       setStatus('Connected');
       
@@ -75,25 +101,25 @@ export default function RegisterLogin() {
       }
     };
 
-    socket.onclose = () => {
+    socket.onclose = (): void => {
       setIsConnected(false);
       setStatus('Disconnected');
       setIsRegistered(false);
       setIsLoggedIn(false);
     };
 
-    socket.onerror = (error) => {
+    socket.onerror = (error: Event): void => {
       console.error("❌ WebSocket error:", error);
       setStatus('Error');
     };
 
-    socket.onmessage = (event) => {
+    socket.onmessage = (event: MessageEvent): void => {
       try {
-        const data = JSON.parse(event.data);
+        const data: WebSocketMessage = JSON.parse(event.data);
         console.log("📨 Message received:", data);
 
         if (data.type === "registered") {
-          const newToken = data.jwt;
+          const newToken: string = data.jwt!;
           // localStorage.setItem("jwt", newToken); // Uncomment in your real environment
           setToken(newToken);
           setIsRegistered(true);
@@ -102,8 +128,8 @@ export default function RegisterLogin() {
           
           // Extract username from JWT
           try {
-            const payload = JSON.parse(atob(newToken.split('.')[1]));
-            const username = payload.name;
+            const payload: JWTPayload = JSON.parse(atob(newToken.split('.')[1]));
+            const username: string = payload.name;
             setCurrentUsername(username);
             currentUsernameRef.current = username;
           } catch (error) {
@@ -112,7 +138,7 @@ export default function RegisterLogin() {
         }
 
         if (data.type === "login_success") {
-          const newToken = data.jwt;
+          const newToken: string = data.jwt!;
           // localStorage.setItem("jwt", newToken); // Uncomment in your real environment
           setToken(newToken);
           setIsLoggedIn(true);
@@ -120,8 +146,8 @@ export default function RegisterLogin() {
           
           // Extract username from JWT
           try {
-            const payload = JSON.parse(atob(newToken.split('.')[1]));
-            const username = payload.name;
+            const payload: JWTPayload = JSON.parse(atob(newToken.split('.')[1]));
+            const username: string = payload.name;
             setCurrentUsername(username);
             currentUsernameRef.current = username;
           } catch (error) {
@@ -130,14 +156,17 @@ export default function RegisterLogin() {
         }
 
         if (data.type === "private") {
-          console.log("🔒 Private message:", data);
+          console.log("🔒 Private message received:", data);
           // Add the new message to msgData immediately
-          setMsgData(prevData => [...prevData, {
-            senderId: data.from || currentUsernameRef.current,
-            recieverId: data.to,
-            content: data.content,
+          const newMessage: Message = {
+            senderId: data.from || currentUsernameRef.current || '',
+            recieverId: data.to || currentUsernameRef.current || '',
+            content: data.content || '',
             timestamp: data.timestamp || new Date().toISOString()
-          }]);
+          };
+          
+          console.log("📝 Adding message to state:", newMessage);
+          setMsgData(prevData => [...prevData, newMessage]);
         }
 
         if (data.type === "allmsg" && Array.isArray(data.messages)) {
@@ -145,15 +174,15 @@ export default function RegisterLogin() {
           setMsgData(data.messages);
           
           // Extract unique user names from messages
-          const allNames = new Set();
-          data.messages.forEach((msg) => {
+          const allNames = new Set<string>();
+          data.messages.forEach((msg: Message) => {
             if (msg.senderId) allNames.add(msg.senderId);
             if (msg.recieverId) allNames.add(msg.recieverId);
           });
           
           // Convert to array and filter out current user
-          const uniqueReceivers = Array.from(allNames).filter(
-            name => name !== currentUsernameRef.current
+          const uniqueReceivers: string[] = Array.from(allNames).filter(
+            (name: string) => name !== currentUsernameRef.current
           );
           
           console.log("📋 Receivers found:", uniqueReceivers);
@@ -162,10 +191,10 @@ export default function RegisterLogin() {
 
         if (data.type === "error") {
           console.error("❌ Server error:", data.message);
-          setStatus(`Error: ${data.message}`);
+          setStatus(`Error: ${data.message || 'Unknown error'}`);
           
           // Handle token expiration
-          if (data.message.includes("token") || data.message.includes("expired")) {
+          if (data.message?.includes("token") || data.message?.includes("expired")) {
             // localStorage.removeItem("jwt"); // Uncomment in your real environment
             setToken(null);
             setIsLoggedIn(false);
@@ -179,7 +208,7 @@ export default function RegisterLogin() {
     };
 
     return () => socket.close();
-  }, []);
+  }, []); // Remove dependencies to prevent reconnection loops
 
   // Request messages when authenticated
   useEffect(() => {
@@ -191,20 +220,22 @@ export default function RegisterLogin() {
 
   // Update contact messages when msgData or selectedContact changes
   useEffect(() => {
-    if (selectedContact && msgData.length > 0) {
-      const filteredMessages = msgData.filter(msg => 
+    if (selectedContact && msgData.length > 0 && currentUsername) {
+      const filteredMessages: Message[] = msgData.filter((msg: Message) => 
         (msg.senderId === currentUsername && msg.recieverId === selectedContact) ||
         (msg.senderId === selectedContact && msg.recieverId === currentUsername)
       );
       
       // Sort messages by timestamp
-      const sortedMessages = filteredMessages.sort((a, b) => {
+      const sortedMessages: Message[] = filteredMessages.sort((a: Message, b: Message) => {
         const timeA = new Date(a.timestamp || a.createdAt || 0);
         const timeB = new Date(b.timestamp || b.createdAt || 0);
-        return timeA - timeB;
+        return timeA.getTime() - timeB.getTime();
       });
       
       setContactMessages(sortedMessages);
+    } else if (!selectedContact) {
+      setContactMessages([]);
     }
   }, [msgData, selectedContact, currentUsername]);
 
@@ -214,20 +245,25 @@ export default function RegisterLogin() {
     console.log("📊 Receivers:", receivers);
   }, [msgData, receivers]);
 
-  const sendMessage = (type) => {
-    const username = nameRef.current?.value?.trim();
+  const sendMessage = (type: string): void => {
+    const username: string | undefined = nameRef.current?.value?.trim();
     if (!username || !isConnected || ws.current?.readyState !== WebSocket.OPEN) return;
 
     ws.current?.send(JSON.stringify({ type, userId: username }));
     setStatus(type === "register" ? "Registering..." : "Logging in...");
   };
 
-  const sendPrivateMessage = () => {
-    const to = rref.current?.value?.trim();
-    const content = mref.current?.value?.trim();
+  const sendPrivateMessage = (): void => {
+    const to: string | undefined = rref.current?.value?.trim();
+    const content: string | undefined = mref.current?.value?.trim();
 
-    if (!to || !content || !token || ws.current?.readyState !== WebSocket.OPEN) return;
+    if (!to || !content || !token || ws.current?.readyState !== WebSocket.OPEN) {
+      console.log("❌ Cannot send message:", { to, content: !!content, token: !!token, wsState: ws.current?.readyState });
+      return;
+    }
 
+    console.log("📤 Sending message:", { to, content, from: currentUsername });
+    
     ws.current?.send(JSON.stringify({
       type: "private",
       to,
@@ -241,26 +277,27 @@ export default function RegisterLogin() {
     // Request updated messages after sending
     setTimeout(() => {
       if (ws.current?.readyState === WebSocket.OPEN && token) {
+        console.log("🔄 Requesting messages after send");
         ws.current?.send(JSON.stringify({ 
           type: "getmsg", 
           jwt: token 
         }));
       }
-    }, 100);
+    }, 1000);
   };
 
-  const selectReceiver = (name) => {
+  const selectReceiver = (name: string): void => {
     if (rref.current) {
       rref.current.value = name;
     }
     setSelectedContact(name);
   };
 
-  const formatTime = (timestamp) => {
+  const formatTime = (timestamp?: string): string => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     const now = new Date();
-    const diffMs = now - date;
+    const diffMs = now.getTime() - date.getTime();
     const diffHours = diffMs / (1000 * 60 * 60);
     
     if (diffHours < 24) {
@@ -272,21 +309,31 @@ export default function RegisterLogin() {
     }
   };
 
-  const getLastMessage = (contactName) => {
-    const messages = msgData.filter(msg => 
+  const getLastMessage = (contactName: string): Message | null => {
+    const messages: Message[] = msgData.filter((msg: Message) => 
       (msg.senderId === currentUsername && msg.recieverId === contactName) ||
       (msg.senderId === contactName && msg.recieverId === currentUsername)
     );
     
     if (messages.length === 0) return null;
     
-    const lastMessage = messages.sort((a, b) => {
+    const lastMessage: Message = messages.sort((a: Message, b: Message) => {
       const timeA = new Date(a.timestamp || a.createdAt || 0);
       const timeB = new Date(b.timestamp || b.createdAt || 0);
-      return timeB - timeA;
+      return timeB.getTime() - timeA.getTime();
     })[0];
     
     return lastMessage;
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      sendPrivateMessage();
+    }
+  };
+
+  const clearReceiverInput = (): void => {
+    if (rref.current) rref.current.value = '';
   };
 
   return (
@@ -349,16 +396,12 @@ export default function RegisterLogin() {
                   ref={rref}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-white placeholder-gray-400"
                 />
-                {rref.current?.value && (
-                  <button 
-                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-200"
-                    onClick={() => {
-                      if (rref.current) rref.current.value = '';
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
+                <button 
+                  className="absolute right-2 top-2 text-gray-400 hover:text-gray-200"
+                  onClick={clearReceiverInput}
+                >
+                  ✕
+                </button>
               </div>
               <div className="flex gap-2">
                 <input
@@ -366,7 +409,7 @@ export default function RegisterLogin() {
                   placeholder="Message"
                   ref={mref}
                   className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-white placeholder-gray-400"
-                  onKeyDown={(e) => e.key === 'Enter' && sendPrivateMessage()}
+                  onKeyDown={handleKeyDown}
                 />
                 <button
                   onClick={sendPrivateMessage}
@@ -395,8 +438,8 @@ export default function RegisterLogin() {
                 No contacts available
               </div>
             ) : (
-              receivers.map((name, index) => {
-                const lastMessage = getLastMessage(name);
+              receivers.map((name: string, index: number) => {
+                const lastMessage: Message | null = getLastMessage(name);
                 return (
                   <button
                     key={`receiver-${index}`}
@@ -458,8 +501,8 @@ export default function RegisterLogin() {
                     <p>Start a conversation with {selectedContact}</p>
                   </div>
                 ) : (
-                  contactMessages.map((message, index) => {
-                    const isFromMe = message.senderId === currentUsername;
+                  contactMessages.map((message: Message, index: number) => {
+                    const isFromMe: boolean = message.senderId === currentUsername;
                     return (
                       <div
                         key={`msg-${index}`}
@@ -492,7 +535,7 @@ export default function RegisterLogin() {
                     placeholder={`Message ${selectedContact}...`}
                     ref={mref}
                     className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                    onKeyDown={(e) => e.key === 'Enter' && sendPrivateMessage()}
+                    onKeyDown={handleKeyDown}
                   />
                   <button
                     onClick={sendPrivateMessage}
