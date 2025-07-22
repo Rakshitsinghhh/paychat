@@ -10,6 +10,7 @@ export default function RegisterLogin() {
   const rref = useRef(null);
   const mref = useRef(null);
   const ws = useRef(null);
+  const messagesEndRef = useRef(null);
 
   const [token, setToken] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -19,7 +20,18 @@ export default function RegisterLogin() {
   const [msgData, setMsgData] = useState([]);
   const [receivers, setReceivers] = useState([]);
   const [currentUsername, setCurrentUsername] = useState(null);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [contactMessages, setContactMessages] = useState([]);
   const currentUsernameRef = useRef(null);
+
+  // Auto-scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [contactMessages]);
 
   // Initialize token and username from memory storage on component mount
   useEffect(() => {
@@ -119,6 +131,13 @@ export default function RegisterLogin() {
 
         if (data.type === "private") {
           console.log("🔒 Private message:", data);
+          // Add the new message to msgData immediately
+          setMsgData(prevData => [...prevData, {
+            senderId: data.from || currentUsernameRef.current,
+            recieverId: data.to,
+            content: data.content,
+            timestamp: data.timestamp || new Date().toISOString()
+          }]);
         }
 
         if (data.type === "allmsg" && Array.isArray(data.messages)) {
@@ -170,6 +189,25 @@ export default function RegisterLogin() {
     }
   }, [isLoggedIn, token]);
 
+  // Update contact messages when msgData or selectedContact changes
+  useEffect(() => {
+    if (selectedContact && msgData.length > 0) {
+      const filteredMessages = msgData.filter(msg => 
+        (msg.senderId === currentUsername && msg.recieverId === selectedContact) ||
+        (msg.senderId === selectedContact && msg.recieverId === currentUsername)
+      );
+      
+      // Sort messages by timestamp
+      const sortedMessages = filteredMessages.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.createdAt || 0);
+        const timeB = new Date(b.timestamp || b.createdAt || 0);
+        return timeA - timeB;
+      });
+      
+      setContactMessages(sortedMessages);
+    }
+  }, [msgData, selectedContact, currentUsername]);
+
   useEffect(() => {
     console.log("📊 Updated msgData:", msgData);
     console.log("📊 Number of messages:", msgData.length);
@@ -214,8 +252,41 @@ export default function RegisterLogin() {
   const selectReceiver = (name) => {
     if (rref.current) {
       rref.current.value = name;
-      rref.current.focus();
     }
+    setSelectedContact(name);
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    
+    if (diffHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffHours < 24 * 7) {
+      return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
+  const getLastMessage = (contactName) => {
+    const messages = msgData.filter(msg => 
+      (msg.senderId === currentUsername && msg.recieverId === contactName) ||
+      (msg.senderId === contactName && msg.recieverId === currentUsername)
+    );
+    
+    if (messages.length === 0) return null;
+    
+    const lastMessage = messages.sort((a, b) => {
+      const timeA = new Date(a.timestamp || a.createdAt || 0);
+      const timeB = new Date(b.timestamp || b.createdAt || 0);
+      return timeB - timeA;
+    })[0];
+    
+    return lastMessage;
   };
 
   return (
@@ -223,7 +294,7 @@ export default function RegisterLogin() {
       {/* Main Content Area */}
       <div 
         className={`bg-gray-900 shadow-2xl transition-all duration-700 ease-in-out ${
-          (isRegistered || isLoggedIn) ? 'w-2/3' : 'w-full'
+          (isRegistered || isLoggedIn) ? 'w-1/3' : 'w-full'
         }`}
       >
         <div className="p-6 max-w-md mx-auto">
@@ -309,39 +380,138 @@ export default function RegisterLogin() {
         </div>
       </div>
 
-      {/* Right Sidebar with Receivers */}
+      {/* Left Sidebar with Contacts */}
       {(isRegistered || isLoggedIn) && (
-        <div className="w-1/3 bg-gray-800 p-4 border-l border-gray-700 opacity-0 animate-slideInRight">
-          <h3 className="text-lg font-semibold mb-4 text-white">
-            Contacts ({receivers.length})
-          </h3>
+        <div className="w-1/3 bg-gray-800 border-r border-gray-700 opacity-0 animate-slideInLeft">
+          <div className="p-4 border-b border-gray-700">
+            <h3 className="text-lg font-semibold text-white">
+              Contacts ({receivers.length})
+            </h3>
+          </div>
           
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="overflow-y-auto max-h-full">
             {receivers.length === 0 ? (
-              <div className="text-gray-400 text-sm italic p-4 text-center bg-gray-900 rounded-lg border border-gray-700">
+              <div className="text-gray-400 text-sm italic p-4 text-center">
                 No contacts available
               </div>
             ) : (
-              receivers.map((name, index) => (
-                <button
-                  key={`receiver-${index}`}
-                  onClick={() => selectReceiver(name)}
-                  className={`w-full text-left px-4 py-3 rounded-lg shadow-sm transition-all duration-200 border ${
-                    rref.current?.value === name
-                      ? 'bg-indigo-900 border-indigo-600 scale-105'
-                      : 'bg-gray-900 border-gray-700 hover:bg-gray-700 hover:border-gray-600'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-white truncate">
-                      {name}
-                    </span>
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  </div>
-                </button>
-              ))
+              receivers.map((name, index) => {
+                const lastMessage = getLastMessage(name);
+                return (
+                  <button
+                    key={`receiver-${index}`}
+                    onClick={() => selectReceiver(name)}
+                    className={`w-full text-left p-4 border-b border-gray-700 transition-all duration-200 hover:bg-gray-700 ${
+                      selectedContact === name ? 'bg-gray-700 border-l-4 border-l-blue-500' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-white truncate">
+                        {name}
+                      </span>
+                      {lastMessage && (
+                        <span className="text-xs text-gray-400">
+                          {formatTime(lastMessage.timestamp || lastMessage.createdAt)}
+                        </span>
+                      )}
+                    </div>
+                    {lastMessage && (
+                      <div className="text-sm text-gray-400 truncate">
+                        {lastMessage.senderId === currentUsername ? 'You: ' : ''}
+                        {lastMessage.content}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
+        </div>
+      )}
+
+      {/* Right Chat Area */}
+      {(isRegistered || isLoggedIn) && (
+        <div className="w-1/3 bg-gray-900 flex flex-col opacity-0 animate-slideInRight">
+          {selectedContact ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 border-b border-gray-700 bg-gray-800">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white">
+                    {selectedContact}
+                  </h3>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-xs text-gray-400">Online</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {contactMessages.length === 0 ? (
+                  <div className="text-center text-gray-400 mt-8">
+                    <div className="text-4xl mb-2">💬</div>
+                    <p>Start a conversation with {selectedContact}</p>
+                  </div>
+                ) : (
+                  contactMessages.map((message, index) => {
+                    const isFromMe = message.senderId === currentUsername;
+                    return (
+                      <div
+                        key={`msg-${index}`}
+                        className={`flex ${isFromMe ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          isFromMe 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-gray-700 text-white'
+                        }`}>
+                          <div className="break-words">{message.content}</div>
+                          <div className={`text-xs mt-1 ${
+                            isFromMe ? 'text-blue-200' : 'text-gray-400'
+                          }`}>
+                            {formatTime(message.timestamp || message.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Message Input */}
+              <div className="p-4 border-t border-gray-700 bg-gray-800">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={`Message ${selectedContact}...`}
+                    ref={mref}
+                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
+                    onKeyDown={(e) => e.key === 'Enter' && sendPrivateMessage()}
+                  />
+                  <button
+                    onClick={sendPrivateMessage}
+                    className="py-2 px-4 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition-all duration-200 border border-blue-500"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <div className="text-6xl mb-4">💬</div>
+                <h3 className="text-xl font-semibold mb-2">Select a contact</h3>
+                <p>Choose a contact from the left to start chatting</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -361,6 +531,17 @@ export default function RegisterLogin() {
             transform: translateX(0); 
           }
         }
+
+        @keyframes slideInLeft {
+          from { 
+            opacity: 0; 
+            transform: translateX(-100%); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateX(0); 
+          }
+        }
         
         .animate-fadeIn {
           animation: fadeIn 0.6s ease-out forwards;
@@ -368,6 +549,10 @@ export default function RegisterLogin() {
         
         .animate-slideInRight {
           animation: slideInRight 0.7s ease-out forwards;
+        }
+
+        .animate-slideInLeft {
+          animation: slideInLeft 0.7s ease-out forwards;
         }
       `}</style>
     </div>
