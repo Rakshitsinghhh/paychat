@@ -6,23 +6,26 @@ import { useEffect, useRef, useState } from "react";
 const getSocket = () => new WebSocket('ws://localhost:8080');
 
 export default function RegisterLogin() {
-  const nameRef = useRef<HTMLInputElement>(null);
-  const rref = useRef<HTMLInputElement>(null);
-  const mref = useRef<HTMLInputElement>(null);
-  const ws = useRef<WebSocket | null>(null);
+  const nameRef = useRef(null);
+  const rref = useRef(null);
+  const mref = useRef(null);
+  const ws = useRef(null);
 
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [status, setStatus] = useState('Connecting...');
-  const [msgData, setMsgData] = useState<any[]>([]);
-  const [receivers, setReceivers] = useState<string[]>([]);
-  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
-  const currentUsernameRef = useRef<string | null>(null);
+  const [msgData, setMsgData] = useState([]);
+  const [receivers, setReceivers] = useState([]);
+  const [currentUsername, setCurrentUsername] = useState(null);
+  const currentUsernameRef = useRef(null);
 
-  // Initialize token and username from localStorage on component mount
+  // Initialize token and username from memory storage on component mount
   useEffect(() => {
+    // Note: localStorage is not available in Claude artifacts
+    // In your real environment, uncomment the localStorage code below:
+    /*
     const storedToken = localStorage.getItem("jwt");
     setToken(storedToken);
     
@@ -38,6 +41,7 @@ export default function RegisterLogin() {
         console.error("❌ Failed to decode stored token:", error);
       }
     }
+    */
   }, []);
 
   useEffect(() => {
@@ -78,7 +82,7 @@ export default function RegisterLogin() {
 
         if (data.type === "registered") {
           const newToken = data.jwt;
-          localStorage.setItem("jwt", newToken);
+          // localStorage.setItem("jwt", newToken); // Uncomment in your real environment
           setToken(newToken);
           setIsRegistered(true);
           setIsLoggedIn(true);
@@ -97,7 +101,7 @@ export default function RegisterLogin() {
 
         if (data.type === "login_success") {
           const newToken = data.jwt;
-          localStorage.setItem("jwt", newToken);
+          // localStorage.setItem("jwt", newToken); // Uncomment in your real environment
           setToken(newToken);
           setIsLoggedIn(true);
           setStatus("Logged In");
@@ -122,8 +126,8 @@ export default function RegisterLogin() {
           setMsgData(data.messages);
           
           // Extract unique user names from messages
-          const allNames = new Set<string>();
-          data.messages.forEach((msg: any) => {
+          const allNames = new Set();
+          data.messages.forEach((msg) => {
             if (msg.senderId) allNames.add(msg.senderId);
             if (msg.recieverId) allNames.add(msg.recieverId);
           });
@@ -143,7 +147,7 @@ export default function RegisterLogin() {
           
           // Handle token expiration
           if (data.message.includes("token") || data.message.includes("expired")) {
-            localStorage.removeItem("jwt");
+            // localStorage.removeItem("jwt"); // Uncomment in your real environment
             setToken(null);
             setIsLoggedIn(false);
             setCurrentUsername(null);
@@ -172,7 +176,7 @@ export default function RegisterLogin() {
     console.log("📊 Receivers:", receivers);
   }, [msgData, receivers]);
 
-  const sendMessage = (type: "register" | "login") => {
+  const sendMessage = (type) => {
     const username = nameRef.current?.value?.trim();
     if (!username || !isConnected || ws.current?.readyState !== WebSocket.OPEN) return;
 
@@ -207,7 +211,7 @@ export default function RegisterLogin() {
     }, 100);
   };
 
-  const selectReceiver = (name: string) => {
+  const selectReceiver = (name) => {
     if (rref.current) {
       rref.current.value = name;
       rref.current.focus();
@@ -243,14 +247,14 @@ export default function RegisterLogin() {
               ref={nameRef}
               placeholder="Enter your name"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-white placeholder-gray-400"
-              // disabled={isLoggedIn}
+              disabled={isLoggedIn}
             />
           </div>
 
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => sendMessage("register")}
-              // disabled={!isConnected || isLoggedIn}
+              disabled={!isConnected || isLoggedIn}
               className="flex-1 py-2 px-4 rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 disabled:bg-gray-700 transition-all duration-200 transform hover:scale-105 border border-blue-500"
             >
               Register
@@ -258,7 +262,7 @@ export default function RegisterLogin() {
 
             <button
               onClick={() => sendMessage("login")}
-              // disabled={!isConnected || isLoggedIn}
+              disabled={!isConnected || isLoggedIn}
               className="flex-1 py-2 px-4 rounded-md bg-gray-700 text-white hover:bg-gray-600 disabled:opacity-50 disabled:bg-gray-800 transition-all duration-200 transform hover:scale-105 border border-gray-600"
             >
               Login
