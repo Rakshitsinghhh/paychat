@@ -1,6 +1,14 @@
 "use client";
 
 import { JSX, useEffect, useRef, useState } from "react";
+import { WagmiProvider } from "wagmi";
+import { config } from './config'
+import { QueryClient, QueryClientProvider} from '@tanstack/react-query'
+import { Appbar } from "../lib/wallet";
+
+const queryClient = new QueryClient();
+
+
 
 // Type definitions
 interface Message {
@@ -59,28 +67,6 @@ export default function RegisterLogin(): JSX.Element {
     scrollToBottom();
   }, [contactMessages]);
 
-  // Initialize token and username from memory storage on component mount
-  useEffect(() => {
-    // Note: localStorage is not available in Claude artifacts
-    // In your real environment, uncomment the localStorage code below:
-    /*
-    const storedToken = localStorage.getItem("jwt");
-    setToken(storedToken);
-    
-    if (storedToken) {
-      try {
-        const payload: JWTPayload = JSON.parse(atob(storedToken.split('.')[1]));
-        const username = payload.name;
-        setCurrentUsername(username);
-        currentUsernameRef.current = username;
-        setIsLoggedIn(true);
-        setStatus("Logged In (from storage)");
-      } catch (error) {
-        console.error("❌ Failed to decode stored token:", error);
-      }
-    }
-    */
-  }, []);
 
   useEffect(() => {
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -337,6 +323,8 @@ export default function RegisterLogin(): JSX.Element {
   };
 
   return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client = {queryClient}>
     <div className="flex min-h-screen bg-black">
       {/* Main Content Area */}
       <div 
@@ -368,6 +356,27 @@ export default function RegisterLogin(): JSX.Element {
               disabled={isLoggedIn}
             />
           </div>
+
+          {/* <div className="mb-4">
+            <input
+              type="text"
+              ref={nameRef}
+              placeholder="Enter your private key"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-white placeholder-gray-400"
+              disabled={isLoggedIn}
+            />
+          </div> */}
+{/* 
+          <div className="mb-4">
+            <input
+              type="text"
+              ref={nameRef}
+              placeholder="Enter your name"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-white placeholder-gray-400"
+              disabled={isLoggedIn}
+            />
+          </div> */}
+
 
           <div className="flex gap-2 mb-4">
             <button
@@ -599,5 +608,8 @@ export default function RegisterLogin(): JSX.Element {
         }
       `}</style>
     </div>
+    <Appbar/>
+    </QueryClientProvider>
+    </WagmiProvider>
   );
 }
