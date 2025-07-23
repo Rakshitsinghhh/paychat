@@ -59,7 +59,6 @@ export default function RegisterLogin(): JSX.Element {
   const currentUsernameRef = useRef<string | null>(null);
   const [walletConnected, setWalletconnected] = useState<boolean>(false);
 
-
   // Auto-scroll to bottom of messages
   const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
