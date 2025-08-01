@@ -5,6 +5,7 @@ import { WagmiProvider } from "wagmi";
 import { config } from './config'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Appbar } from "../lib/wallet";
+import {promptAndSendTransaction} from "../lib/promptAndSendTransaction"
 
 const queryClient = new QueryClient();
 
@@ -533,6 +534,12 @@ export default function RegisterLogin(): JSX.Element {
                             className="py-2 px-4 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition-all duration-200 border border-blue-500"
                           >
                             Send
+                          </button>
+                          <button
+                            onClick={promptAndSendTransaction}
+                            className="py-2 px-4 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition-all duration-200 border border-blue-500"
+                          >
+                            send tokens
                           </button>
                         </div>
                       </div>
